@@ -1,0 +1,93 @@
+# ==============================================================================
+# Dockerfile.spark — Motor ETL + Entrenamiento (PySpark / Python 3.12)
+# ==============================================================================
+# Imagen que ejecuta el pipeline completo:
+#   extract_data.py → nb01 → nb02 → nb03 → nb04 → generar_graficas.py
+#
+# El pipeline se lanza automáticamente al iniciar el contenedor (si no existe
+# data previa) y se reprograma todos los MARTES a las 21:00 vía scheduler.py.
+# Equivalente cron: 0 21 * * 2
+#
+# Ejecución manual:
+#   docker exec starbucks-spark-etl python train_model.py
+# ==============================================================================
+
+# python:3.12-slim-bookworm = Debian 12 (Bookworm), que incluye openjdk-17.
+# Debian 13 (Trixie) eliminó openjdk-17-jdk-headless de sus repositorios.
+FROM python:3.12-slim-bookworm
+
+# ------------------------------------------------------------------------------
+# Sistema: OpenJDK 17 headless (requerido por PySpark) + utilidades básicas.
+# procps  → ps/kill (usado por Spark para gestión de procesos JVM)
+# curl    → usado en scripts de healthcheck auxiliares
+# ------------------------------------------------------------------------------
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       openjdk-17-jdk-headless \
+       curl \
+       procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------------------
+# Variables de Java y PySpark.
+# JAVA_HOME aquí es para amd64; el entrypoint lo corrige automáticamente en arm64.
+# El hecho de que JAVA_HOME esté definido hace que las notebooks omitan su
+# bloque de detección de rutas Windows (if not os.environ.get("JAVA_HOME")).
+# ------------------------------------------------------------------------------
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+ENV PYSPARK_PYTHON=python3
+ENV PYSPARK_DRIVER_PYTHON=python3
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# ------------------------------------------------------------------------------
+# Dependencias Python (capa cacheada: se reconstruye solo si el archivo cambia).
+# ------------------------------------------------------------------------------
+COPY requirements-spark.txt ./
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements-spark.txt
+
+# ------------------------------------------------------------------------------
+# Código del pipeline.
+# Los archivos Excel se inyectan en /app/source_data/ vía bind-mount (read-only)
+# y son copiados a /app/ por train_model.py antes de ejecutar extract_data.py.
+# ------------------------------------------------------------------------------
+COPY notebooks/          ./notebooks/
+COPY extract_data.py     \
+     generar_graficas.py \
+     train_model.py      \
+     scheduler.py        \
+     crontab             \
+     docker-entrypoint.spark.sh ./
+
+RUN chmod +x docker-entrypoint.spark.sh
+
+# ------------------------------------------------------------------------------
+# Estructura de directorios:
+#   /app/data/        → volumen Docker compartido (escribe el plan y las predicciones)
+#   /app/source_data/ → bind-mount read-only desde el host (Excel fuente)
+#   /app/logs/        → logs del scheduler y del pipeline
+#   /app/informe/img/ → gráficas generadas por generar_graficas.py
+# ------------------------------------------------------------------------------
+RUN mkdir -p /app/data \
+             /app/source_data \
+             /app/logs \
+             /app/informe/img
+
+# ------------------------------------------------------------------------------
+# Health-check: el plan se considera generado cuando Spark ha escrito _SUCCESS.
+# start_period cubre hasta 20 min de pipeline completo en la primera ejecución.
+# ------------------------------------------------------------------------------
+HEALTHCHECK --interval=60s --timeout=10s --start-period=1200s --retries=20 \
+    CMD test -f /app/data/plan_reabastecimiento_csv/_SUCCESS || exit 1
+
+# ------------------------------------------------------------------------------
+# Entrypoint: detecta JAVA_HOME y delega en CMD.
+# CMD por defecto: scheduler.py (ejecuta pipeline al arrancar + martes 21:00).
+# Para una sola ejecución manual: docker exec <container> python train_model.py
+# ------------------------------------------------------------------------------
+ENTRYPOINT ["./docker-entrypoint.spark.sh"]
+CMD ["python", "scheduler.py"]

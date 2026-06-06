@@ -1,0 +1,14 @@
+# source_data/ — Carpeta de datos fuente (Excel)
+# ===============================================
+# Coloca aquí los archivos Excel de Starbucks Costa Rica:
+#
+#   source_data/
+#   ├── Analisis CR 44.xlsx    ← histórico antiguo (requerido)
+#   ├── Analisis CR 30.xlsx    ← histórico reciente + inventario (requerido)
+#   └── .gitkeep               ← este archivo (mantiene la carpeta en git)
+#
+# Esta carpeta se monta como bind-mount read-only en el contenedor spark_etl:
+#   host: ./source_data/  →  contenedor: /app/source_data/  (ro)
+#
+# train_model.py copia los .xlsx a /app/ antes de ejecutar extract_data.py.
+# Los archivos Excel NO se guardan en la imagen Docker (están en .dockerignore).

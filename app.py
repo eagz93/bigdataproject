@@ -39,9 +39,44 @@ R = 4    # periodo de revisión en semanas
 
 VERDE = "#00704A"  # verde Starbucks
 
+# --------------------------------------------------------------------------- #
+# Iconos SVG vectoriales (estilo Lucide — 24×24 viewport, stroke-based)        #
+# --------------------------------------------------------------------------- #
+def _ico(paths: str, size: int = 20, color: str = "currentColor") -> str:
+    """Devuelve un SVG inline con los paths indicados (estilo Lucide)."""
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        f'viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" '
+        f'stroke-linecap="round" stroke-linejoin="round" '
+        f'style="vertical-align:middle;flex-shrink:0;">{paths}</svg>'
+    )
+
+
+ICO_CHART    = _ico('<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>')
+ICO_EDIT     = _ico('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/>')
+ICO_BOX      = _ico('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>')
+ICO_DOWNLOAD = _ico('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>')
+ICO_SAVE     = _ico('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>')
+ICO_TRASH    = _ico('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>')
+ICO_CHECK    = _ico('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>')
+ICO_REFRESH  = _ico('<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>')
+ICO_HISTORY  = _ico('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')
+ICO_UPLOAD   = _ico('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>')
+ICO_ORDERS   = _ico('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>')
+
+
+def _hdr(icon: str, text: str, tag: str = "h3") -> None:
+    """Renderiza un encabezado con icono SVG Lucide inline."""
+    st.markdown(
+        f'<{tag} style="display:flex;align-items:center;gap:10px;margin:0.6em 0 0.4em;">'
+        f'{icon}&nbsp;{text}</{tag}>',
+        unsafe_allow_html=True,
+    )
+
+
 st.set_page_config(
     page_title="Plan de Compras · Starbucks CR",
-    page_icon="☕",
+    page_icon=None,
     layout="wide",
 )
 
@@ -152,7 +187,7 @@ plan = cargar_plan()
 # --------------------------------------------------------------------------- #
 # Encabezado
 # --------------------------------------------------------------------------- #
-st.title("☕ Plan de Compras — Starbucks Costa Rica")
+st.title("Plan de Compras — Starbucks Costa Rica")
 st.caption(
     "Pronóstico de demanda (ensamble LR + RF + GBT) + modelo de inventario "
     "(punto de reorden) con tránsito de **13 semanas** y pedidos **semanales**."
@@ -167,7 +202,7 @@ if plan.empty:
     st.stop()
 
 tab_plan, tab_consumo, tab_recepcion = st.tabs(
-    ["📋 Plan de compras", "📝 Consumo semanal", "📦 Confirmar recepción"]
+    ["Plan de Compras", "Consumo Semanal", "Recepcion de Pedidos"]
 )
 
 # =========================================================================== #
@@ -220,21 +255,21 @@ with tab_plan:
     # Gráficas --------------------------------------------------------------- #
     g1, g2 = st.columns(2)
     with g1:
-        st.subheader("Valor del pedido por segmento")
+        _hdr(ICO_CHART, "Valor del pedido por segmento")
         if not pedir_global.empty:
             por_seg = pedir_global.groupby("segmento")["valor_pedido_usd"].sum().sort_values()
             st.bar_chart(por_seg, color=VERDE, horizontal=True)
         else:
             st.info("No hay pedidos pendientes.")
     with g2:
-        st.subheader("SKUs a pedir por tipología de demanda")
+        _hdr(ICO_CHART, "SKUs a pedir por tipología de demanda")
         if not pedir_global.empty:
             por_tip = pedir_global.groupby("tipologia")["SKU"].count().sort_values()
             st.bar_chart(por_tip, color="#1f77b4", horizontal=True)
         else:
             st.info("No hay pedidos pendientes.")
 
-    st.subheader("Top 15 SKUs por valor de pedido (selección actual)")
+    _hdr(ICO_CHART, "Top 15 SKUs por valor de pedido (selección actual)")
     top = f.sort_values("valor_pedido_usd", ascending=False).head(15)
     if not top.empty:
         st.bar_chart(top.set_index("DESCRIPCION")["valor_pedido_usd"], color=VERDE, horizontal=True)
@@ -244,7 +279,7 @@ with tab_plan:
     st.divider()
 
     # Tabla y descarga ------------------------------------------------------- #
-    st.subheader(f"Orden de compra sugerida ({f.shape[0]:,} SKUs)")
+    _hdr(ICO_ORDERS, f"Orden de compra sugerida ({f.shape[0]:,} SKUs)")
     cols_orden = [
         "SKU", "DESCRIPCION", "segmento", "tipologia", "PROVEEDOR",
         "mu", "IP", "ROP", "cantidad_unid", "cantidad_cajas",
@@ -270,7 +305,7 @@ with tab_plan:
         },
     )
     st.download_button(
-        "⬇️ Descargar orden de compra (CSV)",
+        "Descargar orden de compra (CSV)",
         data=tabla.to_csv(index=False).encode("utf-8-sig"),
         file_name="orden_de_compra.csv",
         mime="text/csv",
@@ -282,10 +317,10 @@ with tab_plan:
     )
 
 # =========================================================================== #
-# PESTAÑA 2 — CONSUMO SEMANAL → RECALCULAR PEDIDO
+# PESTAÑA 2 — CONSUMO SEMANAL                                                 #
 # =========================================================================== #
 with tab_consumo:
-    st.subheader("📝 Registrar el consumo de la semana")
+    _hdr(ICO_EDIT, "Registrar el consumo de la semana")
     st.caption(
         "Ingrese las unidades consumidas (vendidas/usadas) por SKU durante la "
         "última semana. El sistema descuenta ese consumo de las existencias y "
@@ -297,11 +332,75 @@ with tab_consumo:
         "Etiqueta de la semana", value=f"{iso.year}-W{iso.week:02d}"
     )
 
+    # ── Importar desde Excel / CSV ─────────────────────────────────────────── #
+    with st.expander("Importar desde Excel o CSV"):
+        st.markdown(
+            f'{ICO_UPLOAD}&nbsp;<b>Formato requerido:</b> columnas '
+            f'<code>SKU</code> y <code>consumo</code>. Las demás columnas se ignoran.',
+            unsafe_allow_html=True,
+        )
+        tpl_cons = pd.DataFrame({"SKU": ["1234", "5678"], "consumo": [10, 25]})
+        st.download_button(
+            "Descargar plantilla CSV",
+            data=tpl_cons.to_csv(index=False).encode("utf-8-sig"),
+            file_name="plantilla_consumo.csv",
+            mime="text/csv",
+            key="tpl_consumo",
+        )
+        uploaded_cons = st.file_uploader(
+            "Seleccionar archivo (xlsx / xls / csv)",
+            type=["xlsx", "xls", "csv"],
+            key="upload_consumo",
+        )
+        if uploaded_cons is not None:
+            try:
+                if uploaded_cons.name.lower().endswith(".csv"):
+                    df_up_c = pd.read_csv(uploaded_cons)
+                else:
+                    df_up_c = pd.read_excel(uploaded_cons)
+                df_up_c.columns = df_up_c.columns.str.strip().str.lower()
+                if "sku" not in df_up_c.columns or "consumo" not in df_up_c.columns:
+                    st.error(
+                        "El archivo debe contener las columnas 'SKU' y 'consumo'. "
+                        f"Columnas encontradas: {list(df_up_c.columns)}"
+                    )
+                else:
+                    df_up_c["sku"] = df_up_c["sku"].astype(str).str.strip()
+                    df_up_c["consumo"] = pd.to_numeric(df_up_c["consumo"], errors="coerce").fillna(0)
+                    df_up_c = df_up_c[df_up_c["consumo"] > 0][["sku", "consumo"]].copy()
+                    validos_c = set(plan["SKU"])
+                    no_enc_c = df_up_c[~df_up_c["sku"].isin(validos_c)]
+                    df_up_c = df_up_c[df_up_c["sku"].isin(validos_c)]
+                    aviso_c = f"**{len(df_up_c)}** SKUs validos para importar"
+                    if not no_enc_c.empty:
+                        aviso_c += f" · {len(no_enc_c)} SKUs no encontrados en el plan (ignorados)."
+                    st.markdown(aviso_c)
+                    st.dataframe(
+                        df_up_c.rename(columns={"sku": "SKU", "consumo": "Consumo"}),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    if st.button("Aplicar importacion", key="aplicar_consumo_xls", type="primary"):
+                        nuevos_xls = df_up_c.rename(columns={"sku": "SKU"}).copy()
+                        nuevos_xls["semana"] = etiqueta_sem
+                        nuevos_xls["fecha"] = date.today().isoformat()
+                        nuevos_xls = nuevos_xls[["SKU", "semana", "consumo", "fecha"]]
+                        hist_xls = _cargar_movimientos(CONSUMO_CSV, ["SKU", "semana", "consumo", "fecha"])
+                        hist_xls = hist_xls[hist_xls["semana"] != etiqueta_sem]
+                        hist_xls = pd.concat([hist_xls, nuevos_xls], ignore_index=True)
+                        _guardar_movimientos(CONSUMO_CSV, hist_xls)
+                        st.success(f"Importados {len(nuevos_xls)} SKUs para {etiqueta_sem}.")
+            except Exception as exc_c:
+                st.error(f"Error al leer el archivo: {exc_c}")
+
+    st.divider()
+
+    # ── Ingreso manual ─────────────────────────────────────────────────────── #
     base_cons = plan[["SKU", "DESCRIPCION", "segmento", "EXIST_W11", "TRANSITO", "mu"]].copy()
     base_cons = base_cons.rename(columns={"EXIST_W11": "existencias", "mu": "demanda_prom"})
     base_cons["consumo"] = 0.0
 
-    filtro_c = st.text_input("Filtrar SKU o descripción", key="busca_consumo").strip().lower()
+    filtro_c = st.text_input("Filtrar SKU o descripcion", key="busca_consumo").strip().lower()
     vista = base_cons
     if filtro_c:
         vista = base_cons[
@@ -317,7 +416,7 @@ with tab_consumo:
         disabled=["SKU", "DESCRIPCION", "segmento", "existencias", "TRANSITO", "demanda_prom"],
         column_config={
             "existencias": st.column_config.NumberColumn("Existencias", format="%.0f"),
-            "TRANSITO": st.column_config.NumberColumn("En tránsito", format="%.0f"),
+            "TRANSITO": st.column_config.NumberColumn("En transito", format="%.0f"),
             "demanda_prom": st.column_config.NumberColumn("Demanda/sem", format="%.2f"),
             "consumo": st.column_config.NumberColumn(
                 "Consumo semana", min_value=0.0, step=1.0, format="%.0f",
@@ -329,9 +428,9 @@ with tab_consumo:
 
     cga, cgb = st.columns([1, 1])
     with cga:
-        guardar_c = st.button("💾 Guardar consumo y recalcular pedido", type="primary")
+        guardar_c = st.button("Guardar consumo y recalcular pedido", type="primary")
     with cgb:
-        limpiar_c = st.button("🗑️ Borrar consumos guardados de esta semana")
+        limpiar_c = st.button("Borrar consumos guardados de esta semana")
 
     if limpiar_c and os.path.exists(CONSUMO_CSV):
         hist = _cargar_movimientos(CONSUMO_CSV, ["SKU", "semana", "consumo", "fecha"])
@@ -368,7 +467,7 @@ with tab_consumo:
         recep_dict = dict(zip(agg_r.index.astype(str), agg_r.values))
 
     st.divider()
-    st.subheader("🔄 Pedido recalculado")
+    _hdr(ICO_REFRESH, "Pedido recalculado")
     if consumo_dict or recep_dict:
         nuevo = recalcular_plan(plan, consumo_dict, recep_dict)
         nuevo_pedir = nuevo[nuevo["pedir_ahora"] == 1]
@@ -391,7 +490,7 @@ with tab_consumo:
                 "consumo_semana": st.column_config.NumberColumn("Consumo", format="%.0f"),
                 "recibido_semana": st.column_config.NumberColumn("Recibido", format="%.0f"),
                 "EXIST_actual": st.column_config.NumberColumn("Existencias", format="%.0f"),
-                "TRANSITO_actual": st.column_config.NumberColumn("Tránsito", format="%.0f"),
+                "TRANSITO_actual": st.column_config.NumberColumn("Transito", format="%.0f"),
                 "IP": st.column_config.NumberColumn("Inventario (IP)", format="%.0f"),
                 "ROP": st.column_config.NumberColumn("Punto reorden", format="%.0f"),
                 "cantidad_unid": st.column_config.NumberColumn("Pedir (unid)", format="%.0f"),
@@ -401,7 +500,7 @@ with tab_consumo:
             },
         )
         st.download_button(
-            "⬇️ Descargar pedido recalculado (CSV)",
+            "Descargar pedido recalculado (CSV)",
             data=mostrar.to_csv(index=False).encode("utf-8-sig"),
             file_name=f"pedido_{etiqueta_sem}.csv",
             mime="text/csv",
@@ -413,10 +512,10 @@ with tab_consumo:
         )
 
 # =========================================================================== #
-# PESTAÑA 3 — CONFIRMAR RECEPCIÓN (lo que llegó en la semana)
+# PESTAÑA 3 — RECEPCION DE PEDIDOS                                            #
 # =========================================================================== #
 with tab_recepcion:
-    st.subheader("📦 Confirmar lo que llegó esta semana")
+    _hdr(ICO_BOX, "Confirmar lo que llegó esta semana")
     st.caption(
         "Registre las unidades recibidas por SKU. Lo recibido se descuenta del "
         "tránsito y se suma a las existencias, actualizando el inventario que "
@@ -430,15 +529,78 @@ with tab_recepcion:
         key="etiqueta_recepcion",
     )
 
+    # ── Importar desde Excel / CSV ─────────────────────────────────────────── #
+    with st.expander("Importar desde Excel o CSV"):
+        st.markdown(
+            f'{ICO_UPLOAD}&nbsp;<b>Formato requerido:</b> columnas '
+            f'<code>SKU</code> y <code>recibido</code>. Las demás columnas se ignoran.',
+            unsafe_allow_html=True,
+        )
+        tpl_rec = pd.DataFrame({"SKU": ["1234", "5678"], "recibido": [48, 120]})
+        st.download_button(
+            "Descargar plantilla CSV",
+            data=tpl_rec.to_csv(index=False).encode("utf-8-sig"),
+            file_name="plantilla_recepcion.csv",
+            mime="text/csv",
+            key="tpl_recepcion",
+        )
+        uploaded_rec = st.file_uploader(
+            "Seleccionar archivo (xlsx / xls / csv)",
+            type=["xlsx", "xls", "csv"],
+            key="upload_recepcion",
+        )
+        if uploaded_rec is not None:
+            try:
+                if uploaded_rec.name.lower().endswith(".csv"):
+                    df_up_r = pd.read_csv(uploaded_rec)
+                else:
+                    df_up_r = pd.read_excel(uploaded_rec)
+                df_up_r.columns = df_up_r.columns.str.strip().str.lower()
+                if "sku" not in df_up_r.columns or "recibido" not in df_up_r.columns:
+                    st.error(
+                        "El archivo debe contener las columnas 'SKU' y 'recibido'. "
+                        f"Columnas encontradas: {list(df_up_r.columns)}"
+                    )
+                else:
+                    df_up_r["sku"] = df_up_r["sku"].astype(str).str.strip()
+                    df_up_r["recibido"] = pd.to_numeric(df_up_r["recibido"], errors="coerce").fillna(0)
+                    df_up_r = df_up_r[df_up_r["recibido"] > 0][["sku", "recibido"]].copy()
+                    validos_r = set(plan["SKU"])
+                    no_enc_r = df_up_r[~df_up_r["sku"].isin(validos_r)]
+                    df_up_r = df_up_r[df_up_r["sku"].isin(validos_r)]
+                    aviso_r = f"**{len(df_up_r)}** SKUs validos para importar"
+                    if not no_enc_r.empty:
+                        aviso_r += f" · {len(no_enc_r)} SKUs no encontrados en el plan (ignorados)."
+                    st.markdown(aviso_r)
+                    st.dataframe(
+                        df_up_r.rename(columns={"sku": "SKU", "recibido": "Recibido"}),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    if st.button("Aplicar importacion", key="aplicar_recepcion_xls", type="primary"):
+                        nuevos_xls_r = df_up_r.rename(columns={"sku": "SKU"}).copy()
+                        nuevos_xls_r["semana"] = etiqueta_rec
+                        nuevos_xls_r["fecha"] = date.today().isoformat()
+                        nuevos_xls_r = nuevos_xls_r[["SKU", "semana", "recibido", "fecha"]]
+                        hist_xls_r = _cargar_movimientos(RECEPCION_CSV, ["SKU", "semana", "recibido", "fecha"])
+                        hist_xls_r = pd.concat([hist_xls_r, nuevos_xls_r], ignore_index=True)
+                        _guardar_movimientos(RECEPCION_CSV, hist_xls_r)
+                        st.success(f"Importadas recepciones de {len(nuevos_xls_r)} SKUs para {etiqueta_rec}.")
+            except Exception as exc_r:
+                st.error(f"Error al leer el archivo: {exc_r}")
+
+    st.divider()
+
+    # ── Ingreso manual ─────────────────────────────────────────────────────── #
     base_rec = plan[["SKU", "DESCRIPCION", "PROVEEDOR", "EXIST_W11", "TRANSITO"]].copy()
     base_rec = base_rec.rename(columns={"EXIST_W11": "existencias", "TRANSITO": "en_transito"})
     base_rec["recibido"] = 0.0
 
     # Mostrar por defecto solo SKUs con tránsito (lo que puede llegar).
-    solo_transito = st.checkbox("Mostrar solo SKUs con tránsito pendiente", value=True)
+    solo_transito = st.checkbox("Mostrar solo SKUs con transito pendiente", value=True)
     vista_r = base_rec[base_rec["en_transito"] > 0] if solo_transito else base_rec
 
-    filtro_r = st.text_input("Filtrar SKU o descripción", key="busca_recepcion").strip().lower()
+    filtro_r = st.text_input("Filtrar SKU o descripcion", key="busca_recepcion").strip().lower()
     if filtro_r:
         vista_r = vista_r[
             vista_r["SKU"].str.lower().str.contains(filtro_r)
@@ -453,7 +615,7 @@ with tab_recepcion:
         disabled=["SKU", "DESCRIPCION", "PROVEEDOR", "existencias", "en_transito"],
         column_config={
             "existencias": st.column_config.NumberColumn("Existencias", format="%.0f"),
-            "en_transito": st.column_config.NumberColumn("En tránsito", format="%.0f"),
+            "en_transito": st.column_config.NumberColumn("En transito", format="%.0f"),
             "recibido": st.column_config.NumberColumn(
                 "Recibido", min_value=0.0, step=1.0, format="%.0f",
                 help="Unidades que llegaron esta semana",
@@ -464,9 +626,9 @@ with tab_recepcion:
 
     cra, crb = st.columns([1, 1])
     with cra:
-        confirmar_r = st.button("✅ Confirmar recepción", type="primary")
+        confirmar_r = st.button("Confirmar recepcion", type="primary")
     with crb:
-        recibir_todo = st.button("📥 Recibir todo el tránsito mostrado")
+        recibir_todo = st.button("Recibir todo el transito mostrado")
 
     hist_r = _cargar_movimientos(RECEPCION_CSV, ["SKU", "semana", "recibido", "fecha"])
 
@@ -490,7 +652,7 @@ with tab_recepcion:
         st.success(f"Se confirmó la recepción de {len(nuevos_r)} SKUs para {etiqueta_rec}.")
 
     st.divider()
-    st.subheader("📚 Historial de recepciones")
+    _hdr(ICO_HISTORY, "Historial de recepciones")
     hist_r = _cargar_movimientos(RECEPCION_CSV, ["SKU", "semana", "recibido", "fecha"])
     if hist_r.empty:
         st.info("Aún no se han confirmado recepciones.")
@@ -508,13 +670,13 @@ with tab_recepcion:
         cda, cdb = st.columns([1, 1])
         with cda:
             st.download_button(
-                "⬇️ Descargar historial (CSV)",
+                "Descargar historial (CSV)",
                 data=hist_r.to_csv(index=False).encode("utf-8-sig"),
                 file_name="recepciones.csv",
                 mime="text/csv",
             )
         with cdb:
-            if st.button("🗑️ Borrar todo el historial de recepciones"):
+            if st.button("Borrar todo el historial de recepciones"):
                 if os.path.exists(RECEPCION_CSV):
                     os.remove(RECEPCION_CSV)
                 st.warning("Historial de recepciones eliminado.")

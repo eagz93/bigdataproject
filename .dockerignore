@@ -1,0 +1,50 @@
+# Python bytecode (no se necesita en ninguna imagen)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Archivos Excel fuente (se inyectan vía bind-mount en source_data/)
+# No se deben hornear en ninguna imagen.
+*.xlsx
+*.xls
+
+# Hadoop binarios de Windows (no necesarios en contenedores Linux)
+hadoop/
+
+# Datos generados en el host (se usan volúmenes Docker en producción)
+data/
+
+# Carpeta de datos fuente del host (bind-mounted read-only)
+source_data/
+
+# Informe y docs estáticos (no necesarios en ningún contenedor)
+informe/
+INFORME.md
+README.md
+
+# Scripts de inspección (solo para desarrollo local)
+inspect_excel.py
+
+# Archivos Docker (no se necesitan dentro de las imágenes)
+Dockerfile
+Dockerfile.*
+docker-compose*.yml
+.dockerignore
+
+# Git y editor
+.git/
+.gitignore
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+

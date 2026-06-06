@@ -1,0 +1,159 @@
+# ==============================================================================
+# docker-compose.yml — Starbucks Plan de Compras · Infraestructura completa
+# ==============================================================================
+#
+# Servicios:
+#   spark_etl  Motor ETL + entrenamiento (PySpark, Java 17, scheduler Python)
+#              Ejecuta el pipeline al arrancar (si no hay datos) y todos los
+#              martes a las 21:00 (cron: 0 21 * * 2).
+#   app        Dashboard Streamlit (imagen ligera, sin PySpark).
+#              Arranca solo DESPUÉS de que spark_etl haya generado el plan.
+#
+# Volúmenes:
+#   data_compartida   Volumen Docker nombrado. Spark escribe, app lee.
+#                     Contiene plan_reabastecimiento_csv/, segmentos_sku_csv/,
+#                     parquet/ y los CSVs auxiliares.
+#   movimientos_data  Persistencia exclusiva de la app (consumos, recepciones).
+#                     Montado sobre /app/data/movimientos en el contenedor app.
+#
+# Bind-mounts (host → contenedor):
+#   ./source_data/    Archivos Excel fuente (read-only en spark_etl).
+#                     Coloca aquí 'Analisis CR 44.xlsx' y 'Analisis CR 30.xlsx'.
+#
+# Comandos de referencia:
+#   docker compose up -d --build          Arranque completo (primera vez)
+#   docker compose logs -f spark_etl      Ver progreso del pipeline
+#   docker compose logs -f app            Ver logs del dashboard
+#   docker exec starbucks-spark-etl python train_model.py   Forzar pipeline
+#   docker compose down                   Parar (conserva volúmenes)
+#   docker compose down -v                Parar Y eliminar volúmenes
+# ==============================================================================
+
+services:
+
+  # ============================================================================
+  # SERVICIO 1: spark_etl — Motor ETL + Entrenamiento
+  # ============================================================================
+  spark_etl:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    image: starbucks-spark-etl:latest
+    container_name: starbucks-spark-etl
+
+    volumes:
+      # Volumen compartido: Spark escribe aquí; la app lee desde él.
+      - type: volume
+        source: data_compartida
+        target: /app/data
+
+      # Excel fuente desde el host (read-only).
+      # Pon tus archivos en ./source_data/ antes de arrancar.
+      - type: bind
+        source: ./source_data
+        target: /app/source_data
+        read_only: true
+
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      # Zona horaria para que el cron de martes 21:00 respete la hora local.
+      # Ajusta a America/Costa_Rica, America/Bogota, etc.
+      TZ: "America/Costa_Rica"
+      # auto → ejecuta el pipeline al iniciar solo si no existe el plan.
+      # true → fuerza ejecución en cada arranque del contenedor.
+      # false → solo ejecuta por el schedule del martes.
+      PIPELINE_RUN_ON_STARTUP: "auto"
+      # Memoria del driver de Spark (ajustar según RAM disponible en el host).
+      SPARK_DRIVER_MEM: "2g"
+
+    restart: unless-stopped
+
+    # Health-check: el contenedor es "healthy" cuando el plan está generado.
+    # start_period cubre el tiempo de la primera ejecución (~10-20 min).
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -f /app/data/plan_reabastecimiento_csv/_SUCCESS"]
+      interval: 60s
+      timeout: 10s
+      retries: 20
+      start_period: 1200s
+
+    # El contenedor Spark recibe todos los recursos sobrantes del host.
+    # Aumentar 'memory' si hay OOMKilled (mínimo recomendado: 4 GB).
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 6G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+
+  # ============================================================================
+  # SERVICIO 2: app — Dashboard Streamlit
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    image: starbucks-plan-compras:latest
+    container_name: starbucks-plan-compras
+
+    # El dashboard arranca junto con spark_etl. Si el plan aún no existe,
+    # app.py muestra un aviso y espera (st.stop). Cuando el pipeline termine
+    # el usuario solo necesita recargar la página.
+    depends_on:
+      spark_etl:
+        condition: service_started
+
+    ports:
+      - "8501:8501"
+
+    volumes:
+      # Lee el plan y las predicciones del volumen compartido.
+      - type: volume
+        source: data_compartida
+        target: /app/data
+
+      # Sobreescribe /app/data/movimientos con el volumen exclusivo de la app.
+      # Spark no escribe aquí; la app registra consumos y recepciones.
+      - type: volume
+        source: movimientos_data
+        target: /app/data/movimientos
+
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      TZ: "America/Costa_Rica"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+    # La app es ligera; Spark recibe el grueso de los recursos.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
+
+# ==============================================================================
+# Volúmenes Docker nombrados
+# ==============================================================================
+volumes:
+  data_compartida:
+    driver: local
+    labels:
+      com.project.description: "Salidas del pipeline Spark (plan, segmentos, parquet)"
+
+  movimientos_data:
+    driver: local
+    labels:
+      com.project.description: "Consumos y recepciones registrados en la app Streamlit"

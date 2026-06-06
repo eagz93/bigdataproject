@@ -1,0 +1,6 @@
+# Dependencias mínimas de la aplicación Streamlit (sin PySpark/Java).
+# Los notebooks se ejecutan en el host y generan los datos; el contenedor
+# solo sirve el dashboard.
+pandas>=2.0
+openpyxl>=3.1
+streamlit>=1.30
