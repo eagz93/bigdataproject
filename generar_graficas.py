@@ -44,13 +44,9 @@ def leer_csv_spark(carpeta: str) -> pd.DataFrame:
     return pd.read_csv(arch[0]) if arch else pd.DataFrame()
 
 
-# --------------------------------------------------------------------------- #
-# 1. Comparación de modelos de demanda (lee data/metricas_modelos.csv del nb02)
-# --------------------------------------------------------------------------- #
 def fig_modelos() -> None:
     ruta = os.path.join(DATA, "metricas_modelos.csv")
     df = pd.read_csv(ruta)
-    # Etiquetas cortas para el eje X.
     abrev = {"LinearRegression": "LinearReg.", "RandomForest": "RandomForest",
              "GBT": "GBT", "BLEND (mezcla)": "BLEND"}
     modelos = [abrev.get(m, m) for m in df["modelo"]]
@@ -73,9 +69,6 @@ def fig_modelos() -> None:
     guardar(fig, "fig01_comparacion_modelos.png")
 
 
-# --------------------------------------------------------------------------- #
-# 2. Importancia de variables (lee data/importancia_variables.csv del nb02)
-# --------------------------------------------------------------------------- #
 def fig_importancia() -> None:
     ruta = os.path.join(DATA, "importancia_variables.csv")
     df = pd.read_csv(ruta).sort_values("importancia")
@@ -86,9 +79,6 @@ def fig_importancia() -> None:
     guardar(fig, "fig02_importancia_variables.png")
 
 
-# --------------------------------------------------------------------------- #
-# 3. Demanda semanal real de los principales SKUs
-# --------------------------------------------------------------------------- #
 def fig_series() -> None:
     dl = pd.read_parquet(os.path.join(PARQUET, "demanda_larga"))
     n_sem = int(dl["semana"].max())
@@ -104,9 +94,6 @@ def fig_series() -> None:
     guardar(fig, "fig03_demanda_series.png")
 
 
-# --------------------------------------------------------------------------- #
-# 4. Segmentación: demanda vs. volatilidad e intermitencia
-# --------------------------------------------------------------------------- #
 def fig_segmentos() -> None:
     seg = pd.read_parquet(os.path.join(PARQUET, "segmentos_sku"))
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 4.6))
@@ -122,9 +109,6 @@ def fig_segmentos() -> None:
     guardar(fig, "fig04_segmentos.png")
 
 
-# --------------------------------------------------------------------------- #
-# 5. Tipología de demanda (Syntetos–Boylan)
-# --------------------------------------------------------------------------- #
 def fig_tipologia() -> None:
     seg = pd.read_parquet(os.path.join(PARQUET, "segmentos_sku"))
     conteo = seg["tipologia"].value_counts()
@@ -138,9 +122,6 @@ def fig_tipologia() -> None:
     guardar(fig, "fig05_tipologia.png")
 
 
-# --------------------------------------------------------------------------- #
-# 6. Plan de compras: valor por segmento y top SKUs
-# --------------------------------------------------------------------------- #
 def fig_plan() -> None:
     plan = leer_csv_spark(os.path.join(ROOT, "data", "plan_reabastecimiento_csv"))
     if plan.empty:
@@ -166,9 +147,6 @@ def fig_plan() -> None:
     guardar(fig, "fig07_plan_top_skus.png")
 
 
-# --------------------------------------------------------------------------- #
-# 7. Posición de inventario vs. punto de reorden (SKUs urgentes de mayor valor)
-# --------------------------------------------------------------------------- #
 def fig_inventario() -> None:
     plan = leer_csv_spark(os.path.join(ROOT, "data", "plan_reabastecimiento_csv"))
     if plan.empty:

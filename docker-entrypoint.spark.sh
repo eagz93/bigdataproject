@@ -1,15 +1,8 @@
-#!/bin/bash
-# =============================================================================
-# docker-entrypoint.spark.sh — Inicialización del contenedor Spark/ETL
-# =============================================================================
-# Detecta JAVA_HOME automáticamente para compatibilidad con amd64 y arm64.
-# Una vez configurado el entorno, delega en el comando principal (CMD).
-# =============================================================================
+#!/bin/sh
 set -e
 
-# ── Detectar JAVA_HOME (fallback si el path por defecto no existe) ─────────── #
 if [ ! -d "${JAVA_HOME:-}" ]; then
-    _java_real=$(readlink -f "$(which java)" 2>/dev/null || echo "")
+    _java_real=$(readlink -f "$(command -v java)" 2>/dev/null || echo "")
     if [ -n "$_java_real" ]; then
         export JAVA_HOME=$(dirname "$(dirname "$_java_real")")
         echo "[entrypoint] JAVA_HOME auto-detectado: $JAVA_HOME"
@@ -30,5 +23,4 @@ echo "[entrypoint] PySpark    : $(python3 -c 'import pyspark; print(pyspark.__ve
 echo "[entrypoint] Iniciando  : $*"
 echo "---"
 
-# Delegar en el CMD
 exec "$@"

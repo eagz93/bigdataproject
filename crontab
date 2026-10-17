@@ -1,31 +1,8 @@
-# ==============================================================================
-# crontab — Referencia de configuración cron para el pipeline ETL
-# ==============================================================================
-# Este archivo es una REFERENCIA DOCUMENTADA del schedule de producción.
-# El proyecto usa scheduler.py (librería Python 'schedule') como implementación
-# principal, ya que es más portable dentro de contenedores Docker.
-#
-# Para migrar a cron nativo del sistema operativo (alternativa):
-#   1. Instalar cron en Dockerfile.spark: apt-get install -y cron
-#   2. Copiar este archivo: COPY crontab /etc/cron.d/starbucks-pipeline
-#   3. Aplicar permisos: RUN chmod 0644 /etc/cron.d/starbucks-pipeline
-#   4. Cambiar el CMD a: CMD ["cron", "-f"]
-#
-# Expresión: 0 21 * * 2
-#   ┌──────── minuto       (0)
-#   │ ┌────── hora         (21 = 21:00)
-#   │ │ ┌──── día del mes  (* = cualquiera)
-#   │ │ │ ┌── mes          (* = cualquiera)
-#   │ │ │ │ ┌ día semana   (2 = martes, 0=domingo)
-#   │ │ │ │ │
-#   0 21 * * 2
-#
-# Zona horaria: ajustar TZ en docker-compose.yml (ej. TZ=America/Costa_Rica)
-# ==============================================================================
+
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin/python3
 PYTHONDONTWRITEBYTECODE=1
 PYTHONUNBUFFERED=1
 
-# Todos los martes a las 21:00 — pipeline completo ETL + entrenamiento
-0 21 * * 2 root /usr/local/bin/python3 /app/train_model.py >> /app/logs/cron.log 2>&1
+
+0 21 * * 1 root /usr/local/bin/python3 /app/train_model.py >> /app/logs/cron.log 2>&1

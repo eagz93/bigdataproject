@@ -10,6 +10,10 @@ venv/
 .venv/
 env/
 
+# Only public Streamlit configuration belongs in the build context.
+.streamlit/*
+!.streamlit/config.toml
+
 # Archivos Excel fuente (se inyectan vía bind-mount en source_data/)
 # No se deben hornear en ninguna imagen.
 *.xlsx
@@ -47,4 +51,3 @@ docker-compose*.yml
 # OS
 .DS_Store
 Thumbs.db
-

@@ -3,4 +3,5 @@
 # solo sirve el dashboard.
 pandas>=2.0
 openpyxl>=3.1
+xlrd>=2.0
 streamlit>=1.30

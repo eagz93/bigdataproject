@@ -1,20 +1,12 @@
 [server]
-# Bind en todas las interfaces para que el contenedor sea accesible.
 port = 8501
 address = "0.0.0.0"
-# Modo headless: sin abrir el navegador automáticamente.
 headless = true
-# Deshabilitar CORS para uso detrás de un reverse proxy (nginx/traefik).
-# Si la app se expone directamente en internet, cambiar a true y configurar
-# el campo 'allowedOrigins'.
-enableCORS = false
-# Protección CSRF activa en producción.
+enableCORS = true
 enableXsrfProtection = true
-# Límite de subida de archivos (MB).
 maxUploadSize = 10
 
 [browser]
-# No enviar telemetría a Streamlit.
 gatherUsageStats = false
 
 [theme]
@@ -25,5 +17,4 @@ textColor           = "#262730"
 font                = "sans serif"
 
 [runner]
-# Deshabilitar la magia de Streamlit (ejecución explícita más predecible).
 magicEnabled = false

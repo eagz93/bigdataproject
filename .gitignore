@@ -1,19 +1,15 @@
-# ─── Datos fuente (binarios grandes / confidenciales) ──────────────────────────
 Analisis CR 44.xlsx
 Analisis CR 30.xlsx
 *.xlsx
 *.xls
-
-# ─── Spark: directorios de salida generados ─────────────────────────────────────
+informe/
 data/parquet/
 data/plan_reabastecimiento_csv/
 data/segmentos_sku_csv/
 data/movimientos/
 
-# ─── Binarios de Hadoop/Spark para Windows ──────────────────────────────────────
 hadoop/
 
-# ─── Python ─────────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
@@ -24,29 +20,28 @@ dist/
 build/
 .eggs/
 
-# ─── Jupyter ─────────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# ─── Entornos virtuales ──────────────────────────────────────────────────────────
 venv/
 .venv/
 env/
 .env
+.streamlit/secrets.toml
+.streamlit/users.local.toml
 
-# ─── IDEs ────────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# ─── Logs y temporales ───────────────────────────────────────────────────────────
 *.log
 derby.log
 _tmp_*.py
 _patch_*.py
 _check.py
 
-# ─── macOS / Windows ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+informe/

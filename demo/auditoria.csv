@@ -1,0 +1,11 @@
+﻿id,happened_at,username,role,action,sku,week,suggested_cases,actual_cases,reason
+1,2026-10-17T04:40:50+00:00,admin,admin,consumo,11004094,2026-W42,,,Delta corregido: 1
+2,2026-10-17T04:40:50+00:00,admin,admin,consumo,11010737,2026-W42,,,Delta corregido: 2
+3,2026-10-17T04:40:50+00:00,admin,admin,consumo,11017010,2026-W42,,,Delta corregido: 1
+4,2026-10-17T04:40:50+00:00,admin,admin,recepcion,11004094,2026-W42,,,Delta corregido: 2
+5,2026-10-17T04:40:50+00:00,admin,admin,recepcion,11010737,2026-W42,,,Delta corregido: 1
+6,2026-10-17T04:40:50+00:00,admin,admin,recepcion,11017010,2026-W42,,,Delta corregido: 2
+7,2026-10-17T04:40:50+00:00,admin,admin,reanudar_circuito,*,2026-W42,,,Reanudación autorizada
+8,2026-10-17T04:40:50+00:00,admin,admin,aprobacion,101091,2026-W42,1.0,1.0,
+9,2026-10-17T04:40:50+00:00,admin,admin,aprobacion,10850,2026-W42,1.0,1.0,
+10,2026-10-17T04:40:50+00:00,admin,admin,aprobacion,11011346,2026-W42,40.0,40.0,

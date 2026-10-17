@@ -1,36 +1,12 @@
-"""
-Extracción, FUSIÓN y limpieza de los libros de Starbucks Costa Rica.
-
-Se combinan DOS exportes del mismo tablero, tomados en momentos distintos:
-
-  - 'Analisis CR 44.xlsx'  -> hoja 'Sheet1'   (encabezado en fila 1)
-        Serie continua W1..S31-25  (2023 W1  ->  2025 W31)  = 135 semanas.
-  - 'Analisis CR 30.xlsx'  -> hoja 'Analisis' (encabezado en fila 11)
-        Serie continua W45..S19-26 (2023 W45 ->  2026 W19)  = 131 semanas,
-        además del snapshot ACTUAL de inventario (EXIST W11 / Transito).
-
-Ambas series comparten un solape (2023 W45 .. 2025 W31) en el que los valores
-coinciden en ~99.6 %, lo que permite alinearlas por POSICIÓN y empalmarlas en un
-único histórico semanal CONTINUO:
-
-      semanas 1..44    ->  desde CR 44   (la parte antigua que CR 30 ya no trae)
-      semanas 45..N    ->  desde CR 30   (la parte reciente, hasta la fecha)
-
-La última semana del CR 30 (S19-26) viene vacía (aún sin cerrar) y se descarta.
-El resultado es un catálogo limpio y estructurado en data/:
-  - historico_semanal.csv   (serie wk1..wkN + snapshot de inventario/tránsito)
-  - semanas_calendario.csv  (mapa wk_idx -> año / semana ISO / etiqueta)
-  - inf.csv, bio.csv, refuerzo_campanas.csv (maestro de producto)
-
-Ejecutar una sola vez:  python extract_data.py
-"""
 import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 
-XL_OLD = "Analisis CR 44.xlsx"   # histórico antiguo (W1..W31-25)
-XL_NEW = "Analisis CR 30.xlsx"   # histórico reciente + inventario actual
-OUT_DIR = "data"
+ROOT = Path(__file__).resolve().parent
+XL_OLD = os.environ.get("XL_OLD_PATH", str(ROOT / "Analisis CR 44.xlsx"))
+XL_NEW = os.environ.get("XL_NEW_PATH", str(ROOT / "Analisis CR 30.xlsx"))
+OUT_DIR = str(ROOT / "data")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -73,39 +49,32 @@ def _weekly_wide(df: pd.DataFrame, week_cols, anchor: int) -> pd.DataFrame:
     wk_names = list(rename.values())
     for c in wk_names:
         sub[c] = pd.to_numeric(sub[c], errors="coerce").fillna(0.0)
-    # Si un SKU aparece duplicado, conservamos la suma (mismo producto, filas partidas).
     sub = sub.groupby("SKU", as_index=True)[wk_names].sum()
     return sub
 
 
-# ---------------------------------------------------------------------------
-# 1) HISTÓRICO SEMANAL FUSIONADO
-# ---------------------------------------------------------------------------
 print("[1] Fusionando histórico semanal de ambos libros...")
 
-# --- 1a. Libro antiguo (CR 44, hoja Sheet1) -> ancla canónica en la semana 1.
 old = pd.read_excel(XL_OLD, sheet_name="Sheet1")
 old_weeks = _week_block(list(old.columns), "W1")
 old_wide = _weekly_wide(old, old_weeks, anchor=1)
 print(f"    CR 44: {len(old_weeks)} semanas (wk1..wk{len(old_weeks)})")
 
-# --- 1b. Libro nuevo (CR 30, hoja Analisis, encabezado en la fila 11).
 new = pd.read_excel(XL_NEW, sheet_name="Analisis", header=10)
 new_weeks = _week_block(list(new.columns), "45")
-ANCHOR_NEW = 45  # la columna '45' equivale a la semana canónica 45.
+ANCHOR_NEW = 45
 new_wide = _weekly_wide(new, new_weeks, anchor=ANCHOR_NEW)
 new_last = ANCHOR_NEW + len(new_weeks) - 1
 print(f"    CR 30: {len(new_weeks)} semanas (wk{ANCHOR_NEW}..wk{new_last})")
 
-# --- 1c. Empalme: CR44 manda en 1..44; CR30 manda en 45..N (dato más reciente).
 n_total = new_last
 all_skus = sorted(set(old_wide.index) | set(new_wide.index))
 wide = pd.DataFrame(index=pd.Index(all_skus, name="SKU"))
 for k in range(1, n_total + 1):
     col = f"wk{k}"
-    if k < ANCHOR_NEW:                       # 1..44  -> CR 44
+    if k < ANCHOR_NEW:
         src = old_wide[col].reindex(all_skus) if col in old_wide.columns else None
-    else:                                    # 45..N  -> CR 30 (relleno con CR 44)
+    else:
         src = new_wide[col].reindex(all_skus) if col in new_wide.columns else None
         if col in old_wide.columns:
             base = old_wide[col].reindex(all_skus)
@@ -113,7 +82,6 @@ for k in range(1, n_total + 1):
     wide[col] = src if src is not None else 0.0
 wide = wide.fillna(0.0)
 
-# --- 1d. Descartar semanas finales vacías (la última del CR 30 aún sin cerrar).
 week_cols = [f"wk{k}" for k in range(1, n_total + 1)]
 while week_cols and wide[week_cols[-1]].sum() == 0:
     print(f"    (descartada {week_cols[-1]}: semana sin movimiento / sin cerrar)")
@@ -122,7 +90,6 @@ while week_cols and wide[week_cols[-1]].sum() == 0:
 n_total = len(week_cols)
 print(f"    Histórico continuo final: {n_total} semanas para {len(all_skus)} SKUs.")
 
-# --- 1e. Snapshot ACTUAL de inventario / dimensión (desde CR 30; relleno CR 44).
 def _snapshot(df_new, df_old):
     cols = {
         "DESCRIPCION": "DESCRIPCION",
@@ -141,7 +108,6 @@ def _snapshot(df_new, df_old):
         return out.drop_duplicates("SKU").set_index("SKU")
     snap = grab(df_new).reindex(all_skus)
     snap_old = grab(df_old).reindex(all_skus)
-    # Rellenar huecos (SKUs sólo en CR 44) con el snapshot antiguo.
     snap = snap.combine_first(snap_old)
     for c in ["PROM_AJUST", "EXIST_W11", "TRANSITO", "UND_ALM", "UND_DET"]:
         if c in snap.columns:
@@ -151,17 +117,12 @@ def _snapshot(df_new, df_old):
 snap = _snapshot(new, old)
 
 hist = snap.join(wide, how="right").reset_index()
-# Orden de columnas: dimensión + snapshot + serie semanal.
 front = [c for c in ["SKU", "DESCRIPCION", "PROVEEDOR", "PROM_AJUST",
                      "EXIST_W11", "TRANSITO", "UND_ALM", "UND_DET"] if c in hist.columns]
 hist = hist[front + week_cols]
 save(hist, "historico_semanal.csv")
 
 
-# ---------------------------------------------------------------------------
-# 2) CALENDARIO DE SEMANAS  (mapa wk_idx -> año / semana ISO / etiqueta)
-#    Semana 1 = 2023 W1. Se asume un calendario de 52 semanas por año.
-# ---------------------------------------------------------------------------
 print("[2] Generando calendario de semanas...")
 cal_rows = []
 for k in range(1, n_total + 1):
@@ -173,9 +134,6 @@ cal = pd.DataFrame(cal_rows)
 save(cal, "semanas_calendario.csv")
 
 
-# ---------------------------------------------------------------------------
-# 3) INFORMACIÓN DE PRODUCTO (hoja 'Inf' del libro NUEVO, CR 30)
-# ---------------------------------------------------------------------------
 print("[3] Procesando información de producto (Inf)...")
 inf = pd.read_excel(XL_NEW, sheet_name="Inf")
 inf = inf.rename(
@@ -201,9 +159,6 @@ inf = inf.drop_duplicates("SKU")
 save(inf, "inf.csv")
 
 
-# ---------------------------------------------------------------------------
-# 4) CLASIFICACIÓN DE SOSTENIBILIDAD (hoja 'BIO', encabezado desplazado).
-# ---------------------------------------------------------------------------
 print("[4] Procesando clasificación de sostenibilidad (BIO)...")
 bio = pd.read_excel(XL_OLD, sheet_name="BIO", header=4)
 bio = bio.loc[:, ~bio.columns.astype(str).str.startswith("Unnamed")]
@@ -225,9 +180,6 @@ keep_bio = [c for c in ["SKU", "DESCRIPCION", "CLASI", "STATUS", "SOSTENIBLE", "
 save(bio[keep_bio].drop_duplicates("SKU"), "bio.csv")
 
 
-# ---------------------------------------------------------------------------
-# 5) REFUERZO DE CAMPAÑAS (bandera estacional 'es_campana').
-# ---------------------------------------------------------------------------
 print("[5] Procesando refuerzo de campañas...")
 camp = pd.read_excel(XL_OLD, sheet_name="Refuerzo campañas")
 camp = camp.rename(
